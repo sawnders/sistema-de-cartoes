@@ -1,0 +1,3263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão de Faturas de Cartão de Crédito</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --success-color: #4cc9f0;
+            --danger-color: #f72585;
+            --warning-color: #ff9e00;
+            --dark-color: #2b2d42;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background-color: var(--primary-color) !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
+        }
+        
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.4rem;
+        }
+        
+        .nav-tabs {
+            border-bottom: 2px solid var(--primary-color);
+            margin-bottom: 20px;
+        }
+        
+        .nav-tabs .nav-link {
+            color: var(--dark-color);
+            font-weight: 500;
+            border: none;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            background-color: transparent;
+            border-bottom: 3px solid var(--primary-color);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,.05);
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+        
+        .progress {
+            height: 8px;
+            border-radius: 4px;
+        }
+        
+        .badge {
+            font-size: 0.85em;
+        }
+        
+        .status-open {
+            background-color: var(--warning-color);
+        }
+        
+        .status-closed {
+            background-color: var(--primary-color);
+        }
+        
+        .status-paid {
+            background-color: var(--success-color);
+        }
+        
+        .category-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            color: white;
+        }
+        
+        .currency-selector {
+            background-color: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            border-radius: 20px;
+        }
+        
+        .currency-selector:focus {
+            background-color: rgba(255,255,255,0.3);
+            color: white;
+            box-shadow: none;
+        }
+        
+        .currency-selector option {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .modal-header {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .modal-header .btn-close {
+            filter: invert(1);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        
+        .summary-card {
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        .summary-card h5 {
+            color: var(--dark-color);
+        }
+        
+        .summary-card .value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        
+        .transaction-item {
+            border-bottom: 1px solid #eee;
+            padding: 12px 0;
+        }
+        
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+        
+        .transaction-category {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: white;
+            margin-right: 8px;
+        }
+        
+        .report-filter {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,.05);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #dee2e6;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding: 20px 0;
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .installment-edit-options {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .installment-info {
+            background-color: #e3f2fd;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary-color);
+        }
+        
+        /* Login Page Styles */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        }
+        
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .login-header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .login-body {
+            padding: 30px;
+            background-color: white;
+        }
+        
+        .google-btn {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .google-btn i {
+            margin-right: 10px;
+        }
+        
+        .google-btn:hover {
+            background-color: #3367D6;
+            color: white;
+        }
+        
+        .user-management {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,.05);
+        }
+        
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .user-item:last-child {
+            border-bottom: none;
+        }
+        
+        .user-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+            object-fit: cover;
+        }
+        
+        .user-info {
+            flex-grow: 1;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .user-email {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        
+        .status-active {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-blocked {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .owner-badge {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h4 class="mb-0">Sistema de Gestão de Faturas</h4>
+                <p class="mb-0">Faça login para continuar</p>
+            </div>
+            <div class="login-body">
+                <button id="googleLoginBtn" class="google-btn">
+                    <i class="fab fa-google"></i> Entrar com Google
+                </button>
+                <div class="text-center text-muted small">
+                    Ao fazer login, você concorda com nossos termos de uso e política de privacidade.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App (Hidden by default) -->
+    <div id="mainApp" style="display: none;">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-dark">
+            <div class="container">
+                <a class="navbar-brand" href="#">
+                    <i class="fas fa-credit-card me-2"></i> Gestão de Faturas
+                </a>
+                <div class="ms-auto d-flex align-items-center">
+                    <select class="form-select currency-selector me-3" id="currencySelector">
+                        <option value="BRL">Real (R$)</option>
+                        <option value="USD">Dólar ($)</option>
+                        <option value="EUR">Euro (€)</option>
+                        <option value="GBP">Libra (£)</option>
+                    </select>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-2"></i> <span id="userName">Usuário</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" id="profileBtn"><i class="fas fa-user-circle me-2"></i> Meu Perfil</a></li>
+                            <li><a class="dropdown-item" href="#" id="settingsBtn"><i class="fas fa-cog me-2"></i> Configurações</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="logoutBtn"><i class="fas fa-sign-out-alt me-2"></i> Sair</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <div class="container mt-4">
+            <!-- Navigation Tabs -->
+            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="cards-tab" data-bs-toggle="tab" data-bs-target="#cards" type="button" role="tab">
+                        <i class="fas fa-credit-card me-2"></i> Cartões
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="invoices-tab" data-bs-toggle="tab" data-bs-target="#invoices" type="button" role="tab">
+                        <i class="fas fa-file-invoice-dollar me-2"></i> Faturas
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="transactions-tab" data-bs-toggle="tab" data-bs-target="#transactions" type="button" role="tab">
+                        <i class="fas fa-money-bill-wave me-2"></i> Lançamentos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" role="tab">
+                        <i class="fas fa-chart-pie me-2"></i> Relatórios
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="categories-tab" data-bs-toggle="tab" data-bs-target="#categories" type="button" role="tab">
+                        <i class="fas fa-tags me-2"></i> Categorias
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab">
+                        <i class="fas fa-cog me-2"></i> Configurações
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab Content -->
+            <div class="tab-content" id="mainTabsContent">
+                <!-- Cards Tab -->
+                <div class="tab-pane fade show active" id="cards" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Meus Cartões</h2>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cardModal">
+                            <i class="fas fa-plus me-2"></i> Novo Cartão
+                        </button>
+                    </div>
+                    
+                    <div id="cardsList" class="row">
+                        <!-- Cards will be dynamically loaded here -->
+                    </div>
+                    
+                    <div id="cardsEmptyState" class="empty-state d-none">
+                        <i class="fas fa-credit-card"></i>
+                        <h4>Nenhum cartão cadastrado</h4>
+                        <p>Cadastre seu primeiro cartão para começar a controlar suas faturas.</p>
+                    </div>
+                </div>
+
+                <!-- Invoices Tab -->
+                <div class="tab-pane fade" id="invoices" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Faturas</h2>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#invoiceModal">
+                            <i class="fas fa-plus me-2"></i> Nova Fatura
+                        </button>
+                    </div>
+                    
+                    <div id="invoicesList" class="row">
+                        <!-- Invoices will be dynamically loaded here -->
+                    </div>
+                    
+                    <div id="invoicesEmptyState" class="empty-state d-none">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <h4>Nenhuma fatura encontrada</h4>
+                        <p>Crie sua primeira fatura para começar a registrar seus lançamentos.</p>
+                    </div>
+                </div>
+
+                <!-- Transactions Tab -->
+                <div class="tab-pane fade" id="transactions" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Lançamentos</h2>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transactionModal">
+                            <i class="fas fa-plus me-2"></i> Novo Lançamento
+                        </button>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Cartão</label>
+                                    <select class="form-select" id="filterCard">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Fatura</label>
+                                    <select class="form-select" id="filterInvoice">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Categoria</label>
+                                    <select class="form-select" id="filterCategory">
+                                        <option value="">Todas</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Buscar</label>
+                                    <input type="text" class="form-control" id="filterSearch" placeholder="Loja ou descrição">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="transactionsList" class="card">
+                        <div class="card-body">
+                            <!-- Transactions will be dynamically loaded here -->
+                        </div>
+                    </div>
+                    
+                    <div id="transactionsEmptyState" class="empty-state d-none">
+                        <i class="fas fa-money-bill-wave"></i>
+                        <h4>Nenhum lançamento encontrado</h4>
+                        <p>Adicione seu primeiro lançamento para começar a controlar seus gastos.</p>
+                    </div>
+                </div>
+
+                <!-- Reports Tab -->
+                <div class="tab-pane fade" id="reports" role="tabpanel">
+                    <h2>Relatórios e Análises</h2>
+                    
+                    <div class="report-filter">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Período</label>
+                                <select class="form-select" id="reportPeriod">
+                                    <option value="current">Mês atual</option>
+                                    <option value="previous">Mês anterior</option>
+                                    <option value="3months">Últimos 3 meses</option>
+                                    <option value="6months">Últimos 6 meses</option>
+                                    <option value="year">Ano atual</option>
+                                    <option value="custom">Personalizado</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Cartão</label>
+                                <select class="form-select" id="reportCard">
+                                    <option value="">Todos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Tipo de Relatório</label>
+                                <select class="form-select" id="reportType">
+                                    <option value="category">Por categoria</option>
+                                    <option value="monthly">Comparativo mensal</option>
+                                    <option value="annual">Evolução anual</option>
+                                    <option value="ranking">Ranking de lojas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" id="generateReport">
+                                    <i class="fas fa-chart-bar me-2"></i> Gerar Relatório
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="reportContent" class="d-none">
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card summary-card">
+                                    <div class="card-body">
+                                        <h5>Total Gasto</h5>
+                                        <div class="value" id="reportTotal">R$ 0,00</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card summary-card">
+                                    <div class="card-body">
+                                        <h5>Média Mensal</h5>
+                                        <div class="value" id="reportAverage">R$ 0,00</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card summary-card">
+                                    <div class="card-body">
+                                        <h5>Maior Gasto</h5>
+                                        <div class="value" id="reportHighest">R$ 0,00</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card summary-card">
+                                    <div class="card-body">
+                                        <h5>Variação</h5>
+                                        <div class="value" id="reportVariation">0%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Gráfico de Análise</h5>
+                                <button class="btn btn-sm btn-outline-light" id="exportPDF">
+                                    <i class="fas fa-file-pdf me-2"></i> Exportar PDF
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="reportChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="reportsEmptyState" class="empty-state">
+                        <i class="fas fa-chart-pie"></i>
+                        <h4>Selecione os filtros para gerar um relatório</h4>
+                        <p>Escolha o período, cartão e tipo de relatório para visualizar suas análises financeiras.</p>
+                    </div>
+                </div>
+
+                <!-- Categories Tab -->
+                <div class="tab-pane fade" id="categories" role="tabpanel">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2>Categorias e Subcategorias</h2>
+                        <div>
+                            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#categoryModal">
+                                <i class="fas fa-plus me-2"></i> Nova Categoria
+                            </button>
+                            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#subcategoryModal">
+                                <i class="fas fa-plus me-2"></i> Nova Subcategoria
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Categorias</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="categoriesList">
+                                        <!-- Categories will be dynamically loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Subcategorias</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="subcategoriesList">
+                                        <!-- Subcategories will be dynamically loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-pane fade" id="settings" role="tabpanel">
+                    <h2>Configurações do Sistema</h2>
+                    
+                    <!-- User Management Section (Only for owner) -->
+                    <div id="userManagementSection" class="user-management d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h3>Gerenciamento de Usuários</h3>
+                            <span class="owner-badge">PROPRIETÁRIO</span>
+                        </div>
+                        
+                        <div id="usersList">
+                            <!-- Users will be dynamically loaded here -->
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Manutenção de Dados</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <h6>Limpeza por Período</h6>
+                                    <p class="text-muted">Remova lançamentos, faturas e relatórios de um período específico.</p>
+                                    <div class="row g-2">
+                                        <div class="col-6">
+                                            <input type="date" class="form-control" id="cleanStartDate">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="date" class="form-control" id="cleanEndDate">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-danger mt-2" id="cleanPeriodBtn">
+                                        <i class="fas fa-trash me-2"></i> Limpar Período
+                                    </button>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h6>Reset Completo do Sistema</h6>
+                                    <p class="text-muted">Remove todos os dados e restaura as configurações padrão.</p>
+                                    <button class="btn btn-danger" id="resetSystemBtn">
+                                        <i class="fas fa-redo me-2"></i> Resetar Sistema
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Informações do Sistema</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Versão:</strong> 1.0.0</p>
+                                    <p><strong>Data de Criação:</strong> 2023</p>
+                                    <p><strong>Tecnologias:</strong> HTML5, CSS3, JavaScript ES6+, Bootstrap 5, Firebase</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>Armazenamento:</strong> Firebase Firestore</p>
+                                    <p><strong>Compatibilidade:</strong> Chrome, Firefox, Safari, Edge</p>
+                                    <p><strong>Desenvolvedor:</strong> Sistema de Gestão Financeira</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2023 Sistema de Gestão de Faturas de Cartão de Crédito. Todos os direitos reservados.</p>
+        </div>
+    </footer>
+
+    <!-- Card Modal -->
+    <div class="modal fade" id="cardModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cardModalTitle">Novo Cartão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="cardForm">
+                        <input type="hidden" id="cardId">
+                        <div class="mb-3">
+                            <label class="form-label">Nome do Cartão</label>
+                            <input type="text" class="form-control" id="cardName" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Dia de Fechamento</label>
+                                <input type="number" class="form-control" id="cardClosingDay" min="1" max="31" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Dia de Vencimento</label>
+                                <input type="number" class="form-control" id="cardDueDay" min="1" max="31" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Limite de Crédito</label>
+                            <input type="number" class="form-control" id="cardLimit" step="0.01" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveCardBtn">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Invoice Modal -->
+    <div class="modal fade" id="invoiceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nova Fatura</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="invoiceForm">
+                        <div class="mb-3">
+                            <label class="form-label">Cartão</label>
+                            <select class="form-select" id="invoiceCard" required>
+                                <option value="">Selecione um cartão</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Mês</label>
+                                <select class="form-select" id="invoiceMonth" required>
+                                    <option value="1">Janeiro</option>
+                                    <option value="2">Fevereiro</option>
+                                    <option value="3">Março</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Maio</option>
+                                    <option value="6">Junho</option>
+                                    <option value="7">Julho</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Setembro</option>
+                                    <option value="10">Outubro</option>
+                                    <option value="11">Novembro</option>
+                                    <option value="12">Dezembro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Ano</label>
+                                <input type="number" class="form-control" id="invoiceYear" min="2020" max="2030" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveInvoiceBtn">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Modal -->
+    <div class="modal fade" id="transactionModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="transactionModalTitle">Novo Lançamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="transactionForm">
+                        <input type="hidden" id="transactionId">
+                        <input type="hidden" id="editMode" value="false">
+                        <input type="hidden" id="editInstallmentMode" value="">
+                        
+                        <div id="installmentInfo" class="installment-info d-none">
+                            <h6>Informações da Parcela</h6>
+                            <p id="installmentDetails"></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Cartão</label>
+                            <select class="form-select" id="transactionCard" required>
+                                <option value="">Selecione um cartão</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Fatura</label>
+                            <select class="form-select" id="transactionInvoice" required>
+                                <option value="">Selecione uma fatura</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Loja/Serviço</label>
+                            <input type="text" class="form-control" id="transactionStore" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Valor</label>
+                                <input type="number" class="form-control" id="transactionValue" step="0.01" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Data</label>
+                                <input type="date" class="form-control" id="transactionDate" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Categoria</label>
+                            <select class="form-select" id="transactionCategory" required>
+                                <option value="">Selecione uma categoria</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Subcategoria</label>
+                            <select class="form-select" id="transactionSubcategory">
+                                <option value="">Selecione uma subcategoria</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Tipo</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="transactionType" id="cashType" value="cash" checked>
+                                    <label class="form-check-label" for="cashType">À vista</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="transactionType" id="installmentType" value="installment">
+                                    <label class="form-check-label" for="installmentType">Parcelado</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3 d-none" id="installmentOptions">
+                            <label class="form-label">Número de Parcelas</label>
+                            <input type="number" class="form-control" id="transactionInstallments" min="2" max="12">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descrição (opcional)</label>
+                            <textarea class="form-control" id="transactionDescription" rows="2"></textarea>
+                        </div>
+                        
+                        <div id="installmentEditOptions" class="installment-edit-options d-none">
+                            <h6>Opções de Edição</h6>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="editInstallmentOption" id="editCurrentOnly" value="current" checked>
+                                <label class="form-check-label" for="editCurrentOnly">
+                                    Editar apenas esta parcela
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="editInstallmentOption" id="editAllRemaining" value="remaining">
+                                <label class="form-check-label" for="editAllRemaining">
+                                    Editar esta e todas as parcelas restantes
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="editInstallmentOption" id="editAllInstallments" value="all">
+                                <label class="form-check-label" for="editAllInstallments">
+                                    Editar todas as parcelas (incluindo as já pagas)
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveTransactionBtn">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div class="modal fade" id="categoryModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="categoryModalTitle">Nova Categoria</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="categoryForm">
+                        <input type="hidden" id="categoryId">
+                        <div class="mb-3">
+                            <label class="form-label">Nome</label>
+                            <input type="text" class="form-control" id="categoryName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Cor</label>
+                            <input type="color" class="form-control form-control-color" id="categoryColor" value="#4361ee">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ícone</label>
+                            <select class="form-select" id="categoryIcon" required>
+                                <option value="fas fa-shopping-cart">Compras</option>
+                                <option value="fas fa-utensils">Alimentação</option>
+                                <option value="fas fa-car">Transporte</option>
+                                <option value="fas fa-home">Moradia</option>
+                                <option value="fas fa-heart">Saúde</option>
+                                <option value="fas fa-graduation-cap">Educação</option>
+                                <option value="fas fa-tshirt">Vestuário</option>
+                                <option value="fas fa-gamepad">Lazer</option>
+                                <option value="fas fa-plane">Viagens</option>
+                                <option value="fas fa-piggy-bank">Economia</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveCategoryBtn">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subcategory Modal -->
+    <div class="modal fade" id="subcategoryModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="subcategoryModalTitle">Nova Subcategoria</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="subcategoryForm">
+                        <input type="hidden" id="subcategoryId">
+                        <div class="mb-3">
+                            <label class="form-label">Nome</label>
+                            <input type="text" class="form-control" id="subcategoryName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Categoria</label>
+                            <select class="form-select" id="subcategoryCategory" required>
+                                <option value="">Selecione uma categoria</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="saveSubcategoryBtn">Salvar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile Modal -->
+    <div class="modal fade" id="userProfileModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Meu Perfil</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <img id="profileAvatar" src="" class="rounded-circle mb-3" width="100" height="100" alt="Avatar">
+                        <h5 id="profileName"></h5>
+                        <p id="profileEmail" class="text-muted"></p>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>ID do Usuário:</strong> <span id="profileUid"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Status:</strong> <span id="profileStatus" class="status-badge status-active">Ativo</span></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDakkKRkNT5qUeuRgkHzYAWaS3TtA9hMRQ",
+            authDomain: "siscard-aadc3.firebaseapp.com",
+            projectId: "siscard-aadc3",
+            storageBucket: "siscard-aadc3.firebasestorage.app",
+            messagingSenderId: "606490832343",
+            appId: "1:606490832343:web:168ce0e1ccfde853e9ef92",
+            measurementId: "G-BXEW5MDBDB"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        // Sistema de Gestão de Faturas de Cartão de Crédito
+        // Variáveis globais
+        let currentUser = null;
+        let isOwner = false;
+        let currentCurrency = 'BRL';
+        let financeData = {
+            cards: [],
+            invoices: [],
+            transactions: [],
+            categories: [],
+            subcategories: []
+        };
+        
+        // Configurações de moeda
+        const currencySymbols = {
+            'BRL': 'R$',
+            'USD': '$',
+            'EUR': '€',
+            'GBP': '£'
+        };
+        
+        // Categorias padrão
+        const defaultCategories = [
+            { id: 1, name: 'Alimentação', color: '#f72585', icon: 'fas fa-utensils' },
+            { id: 2, name: 'Transporte', color: '#4361ee', icon: 'fas fa-car' },
+            { id: 3, name: 'Moradia', color: '#3f37c9', icon: 'fas fa-home' },
+            { id: 4, name: 'Lazer', color: '#4cc9f0', icon: 'fas fa-gamepad' },
+            { id: 5, name: 'Saúde', color: '#ff9e00', icon: 'fas fa-heart' }
+        ];
+        
+        // Subcategorias padrão
+        const defaultSubcategories = [
+            { id: 1, name: 'Supermercado', categoryId: 1 },
+            { id: 2, name: 'Restaurante', categoryId: 1 },
+            { id: 3, name: 'Combustível', categoryId: 2 },
+            { id: 4, name: 'Uber/99', categoryId: 2 },
+            { id: 5, name: 'Aluguel', categoryId: 3 },
+            { id: 6, name: 'Contas', categoryId: 3 },
+            { id: 7, name: 'Cinema', categoryId: 4 },
+            { id: 8, name: 'Streaming', categoryId: 4 },
+            { id: 9, name: 'Farmácia', categoryId: 5 },
+            { id: 10, name: 'Plano de Saúde', categoryId: 5 }
+        ];
+        
+        // Email do proprietário
+        const ownerEmail = 'elielsawnders@gmail.com';
+        
+        // Inicialização do sistema
+        document.addEventListener('DOMContentLoaded', function() {
+            setupAuthListeners();
+            checkAuthState();
+        });
+        
+        // Configurar listeners de autenticação
+        function setupAuthListeners() {
+            // Login com Google
+            document.getElementById('googleLoginBtn').addEventListener('click', loginWithGoogle);
+            
+            // Logout
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            
+            // Verificar aba de configurações para mostrar gerenciamento de usuários
+            document.getElementById('settings-tab').addEventListener('shown.bs.tab', function() {
+                if (isOwner) {
+                    loadUsers();
+                    document.getElementById('userManagementSection').classList.remove('d-none');
+                } else {
+                    document.getElementById('userManagementSection').classList.add('d-none');
+                }
+            });
+            
+            // Botão de perfil
+            document.getElementById('profileBtn').addEventListener('click', showUserProfile);
+        }
+        
+        // Verificar estado de autenticação
+        function checkAuthState() {
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    // Usuário está logado
+                    currentUser = user;
+                    isOwner = user.email === ownerEmail;
+                    
+                    // Mostrar aplicação principal
+                    document.getElementById('loginPage').style.display = 'none';
+                    document.getElementById('mainApp').style.display = 'block';
+                    
+                    // Atualizar informações do usuário
+                    document.getElementById('userName').textContent = user.displayName || user.email;
+                    
+                    // Carregar dados do usuário
+                    loadUserData();
+                } else {
+                    // Usuário não está logado
+                    currentUser = null;
+                    isOwner = false;
+                    
+                    // Mostrar página de login
+                    document.getElementById('loginPage').style.display = 'flex';
+                    document.getElementById('mainApp').style.display = 'none';
+                }
+            });
+        }
+        
+        // Login com Google
+        function loginWithGoogle() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then(result => {
+                    // Login bem-sucedido
+                    const user = result.user;
+                    
+                    // Verificar se o usuário existe no Firestore
+                    checkUserExists(user);
+                })
+                .catch(error => {
+                    // Erro no login
+                    console.error('Erro no login:', error);
+                    alert('Erro ao fazer login. Tente novamente.');
+                });
+        }
+        
+        // Verificar se o usuário existe no Firestore
+        function checkUserExists(user) {
+            const userRef = db.collection('users').doc(user.uid);
+            
+            userRef.get().then(doc => {
+                if (!doc.exists) {
+                    // Usuário não existe, criar novo documento
+                    createUser(user);
+                } else {
+                    // Usuário existe, verificar se está ativo
+                    const userData = doc.data();
+                    if (userData.status === 'blocked') {
+                        // Usuário bloqueado, fazer logout
+                        alert('Sua conta foi bloqueada. Entre em contato com o suporte.');
+                        logout();
+                    }
+                }
+            }).catch(error => {
+                console.error('Erro ao verificar usuário:', error);
+            });
+        }
+        
+        // Criar novo usuário no Firestore
+        function createUser(user) {
+            const userRef = db.collection('users').doc(user.uid);
+            
+            userRef.set({
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName || user.email,
+                photoURL: user.photoURL || '',
+                status: 'active',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                console.log('Usuário criado com sucesso');
+            }).catch(error => {
+                console.error('Erro ao criar usuário:', error);
+            });
+        }
+        
+        // Logout
+        function logout() {
+            auth.signOut().then(() => {
+                console.log('Logout realizado com sucesso');
+            }).catch(error => {
+                console.error('Erro ao fazer logout:', error);
+            });
+        }
+        
+        // Carregar dados do usuário
+        function loadUserData() {
+            if (!currentUser) return;
+            
+            // Carregar moeda atual do usuário
+            const userRef = db.collection('users').doc(currentUser.uid);
+            
+            userRef.get().then(doc => {
+                if (doc.exists) {
+                    const userData = doc.data();
+                    if (userData.currency) {
+                        currentCurrency = userData.currency;
+                        document.getElementById('currencySelector').value = currentCurrency;
+                    }
+                }
+            }).catch(error => {
+                console.error('Erro ao carregar dados do usuário:', error);
+            });
+            
+            // Carregar dados financeiros do usuário
+            loadFinanceData();
+            
+            // Configurar event listeners
+            setupEventListeners();
+        }
+        
+        // Carregar dados financeiros do usuário
+        function loadFinanceData() {
+            if (!currentUser) return;
+            
+            // Limpar dados atuais
+            financeData = {
+                cards: [],
+                invoices: [],
+                transactions: [],
+                categories: [],
+                subcategories: []
+            };
+            
+            // Carregar dados do Firestore
+            const financeRef = db.collection('userFinance').doc(currentUser.uid).collection('data').doc(currentCurrency);
+            
+            financeRef.get().then(doc => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    
+                    // Validar e copiar apenas os campos esperados
+                    if (data.cards && Array.isArray(data.cards)) {
+                        financeData.cards = data.cards;
+                    }
+                    if (data.invoices && Array.isArray(data.invoices)) {
+                        financeData.invoices = data.invoices;
+                    }
+                    if (data.transactions && Array.isArray(data.transactions)) {
+                        financeData.transactions = data.transactions;
+                    }
+                    if (data.categories && Array.isArray(data.categories)) {
+                        financeData.categories = data.categories;
+                    }
+                    if (data.subcategories && Array.isArray(data.subcategories)) {
+                        financeData.subcategories = data.subcategories;
+                    }
+                }
+                
+                // Inicializar dados padrão se necessário
+                initializeDefaultData();
+                
+                // Renderizar todos os dados
+                renderAllData();
+            }).catch(error => {
+                console.error('Erro ao carregar dados financeiros:', error);
+                
+                // Inicializar dados padrão em caso de erro
+                initializeDefaultData();
+                renderAllData();
+            });
+        }
+        
+        // Salvar dados financeiros do usuário
+        function saveFinanceData() {
+            if (!currentUser) return;
+            
+            const dataToSave = {
+                cards: financeData.cards,
+                invoices: financeData.invoices,
+                transactions: financeData.transactions,
+                categories: financeData.categories,
+                subcategories: financeData.subcategories
+            };
+            
+            const financeRef = db.collection('userFinance').doc(currentUser.uid).collection('data').doc(currentCurrency);
+            
+            financeRef.set(dataToSave).then(() => {
+                console.log('Dados financeiros salvos com sucesso');
+            }).catch(error => {
+                console.error('Erro ao salvar dados financeiros:', error);
+            });
+            
+            // Salvar moeda atual do usuário
+            const userRef = db.collection('users').doc(currentUser.uid);
+            userRef.update({
+                currency: currentCurrency,
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            }).catch(error => {
+                console.error('Erro ao atualizar moeda do usuário:', error);
+            });
+        }
+        
+        // Inicializar dados padrão
+        function initializeDefaultData() {
+            if (financeData.categories.length === 0) {
+                financeData.categories = JSON.parse(JSON.stringify(defaultCategories));
+            }
+            
+            if (financeData.subcategories.length === 0) {
+                financeData.subcategories = JSON.parse(JSON.stringify(defaultSubcategories));
+            }
+            
+            saveFinanceData();
+        }
+        
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Seletor de moeda
+            document.getElementById('currencySelector').addEventListener('change', function() {
+                changeCurrency(this.value);
+            });
+            
+            // Abas
+            document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+                tab.addEventListener('shown.bs.tab', function() {
+                    const target = this.getAttribute('data-bs-target');
+                    if (target === '#invoices') {
+                        updateCardOptions();
+                        renderInvoices();
+                    } else if (target === '#transactions') {
+                        updateCardOptions();
+                        updateCategoryOptions();
+                        renderTransactions();
+                    } else if (target === '#reports') {
+                        setupReportFilters();
+                    } else if (target === '#categories') {
+                        renderCategories();
+                    }
+                });
+            });
+            
+            // Formulários
+            document.getElementById('saveCardBtn').addEventListener('click', saveCard);
+            document.getElementById('saveInvoiceBtn').addEventListener('click', saveInvoice);
+            document.getElementById('saveTransactionBtn').addEventListener('click', saveTransaction);
+            document.getElementById('saveCategoryBtn').addEventListener('click', saveCategory);
+            document.getElementById('saveSubcategoryBtn').addEventListener('click', saveSubcategory);
+            
+            // Filtros
+            document.getElementById('filterCard').addEventListener('change', renderTransactions);
+            document.getElementById('filterInvoice').addEventListener('change', renderTransactions);
+            document.getElementById('filterCategory').addEventListener('change', renderTransactions);
+            document.getElementById('filterSearch').addEventListener('input', renderTransactions);
+            
+            // Relatórios
+            document.getElementById('generateReport').addEventListener('click', generateReport);
+            document.getElementById('exportPDF').addEventListener('click', exportReportToPDF);
+            
+            // Configurações
+            document.getElementById('cleanPeriodBtn').addEventListener('click', cleanPeriod);
+            document.getElementById('resetSystemBtn').addEventListener('click', resetSystem);
+            
+            // Tipo de transação
+            document.querySelectorAll('input[name="transactionType"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const installmentOptions = document.getElementById('installmentOptions');
+                    if (this.value === 'installment') {
+                        installmentOptions.classList.remove('d-none');
+                    } else {
+                        installmentOptions.classList.add('d-none');
+                    }
+                });
+            });
+            
+            // Cartão selecionado no formulário de fatura
+            document.getElementById('invoiceCard').addEventListener('change', function() {
+                const cardId = parseInt(this.value);
+                const card = financeData.cards.find(c => c.id === cardId);
+                if (card) {
+                    const today = new Date();
+                    document.getElementById('invoiceMonth').value = today.getMonth() + 1;
+                    document.getElementById('invoiceYear').value = today.getFullYear();
+                }
+            });
+            
+            // Cartão selecionado no formulário de transação
+            document.getElementById('transactionCard').addEventListener('change', function() {
+                const cardId = parseInt(this.value);
+                updateInvoiceOptions(cardId);
+            });
+            
+            // Categoria selecionada no formulário de subcategoria
+            document.getElementById('subcategoryCategory').addEventListener('change', function() {
+                updateSubcategoryOptions();
+            });
+            
+            // Categoria selecionada no formulário de transação
+            document.getElementById('transactionCategory').addEventListener('change', function() {
+                updateSubcategoryOptions();
+            });
+        }
+        
+        // Mudar moeda
+        function changeCurrency(newCurrency) {
+            if (newCurrency === currentCurrency) return;
+            
+            // Salvar dados da moeda atual antes de trocar
+            saveFinanceData();
+            
+            // Atualizar moeda atual
+            currentCurrency = newCurrency;
+            
+            // Recarregar tudo para a nova moeda
+            loadFinanceData();
+            
+            console.log(`Moeda alterada para: ${currentCurrency}`);
+        }
+        
+        // Renderizar todos os dados
+        function renderAllData() {
+            renderCards();
+            renderInvoices();
+            renderTransactions();
+            renderCategories();
+            setupReportFilters();
+        }
+        
+        // Atualizar opções de cartão
+        function updateCardOptions() {
+            const cardSelects = ['invoiceCard', 'transactionCard', 'filterCard', 'reportCard'];
+            cardSelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (!select) return;
+                
+                const currentValue = select.value;
+                if (selectId === 'filterCard' || selectId === 'reportCard') {
+                    select.innerHTML = '<option value="">Todos</option>';
+                } else {
+                    select.innerHTML = '<option value="">Selecione um cartão</option>';
+                }
+                
+                financeData.cards.forEach(card => {
+                    select.innerHTML += `<option value="${card.id}">${card.name}</option>`;
+                });
+                
+                // Restaurar valor selecionado se ainda existir
+                if (currentValue && financeData.cards.find(c => c.id == currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+        }
+        
+        // Atualizar opções de categoria
+        function updateCategoryOptions() {
+            const categorySelects = ['transactionCategory', 'filterCategory', 'subcategoryCategory'];
+            categorySelects.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                if (!select) return;
+                
+                const currentValue = select.value;
+                if (selectId === 'filterCategory') {
+                    select.innerHTML = '<option value="">Todas</option>';
+                } else {
+                    select.innerHTML = '<option value="">Selecione uma categoria</option>';
+                }
+                
+                financeData.categories.forEach(category => {
+                    select.innerHTML += `<option value="${category.id}">${category.name}</option>`;
+                });
+                
+                // Restaurar valor selecionado se ainda existir
+                if (currentValue && financeData.categories.find(c => c.id == currentValue)) {
+                    select.value = currentValue;
+                }
+            });
+        }
+        
+        // Renderizar cartões
+        function renderCards() {
+            const cardsList = document.getElementById('cardsList');
+            const emptyState = document.getElementById('cardsEmptyState');
+            
+            if (financeData.cards.length === 0) {
+                cardsList.innerHTML = '';
+                emptyState.classList.remove('d-none');
+                return;
+            }
+            
+            emptyState.classList.add('d-none');
+            cardsList.innerHTML = '';
+            
+            financeData.cards.forEach(card => {
+                const totalSpent = calculateCardTotalSpent(card.id);
+                const availableLimit = card.creditLimit - totalSpent;
+                const usagePercentage = (totalSpent / card.creditLimit) * 100;
+                
+                const cardHtml = `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">${card.name}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Limite utilizado</span>
+                                        <span>${formatCurrency(totalSpent)} / ${formatCurrency(card.creditLimit)}</span>
+                                    </div>
+                                    <div class="progress">
+                                        <div class="progress-bar ${usagePercentage > 80 ? 'bg-danger' : usagePercentage > 50 ? 'bg-warning' : 'bg-success'}" 
+                                             style="width: ${usagePercentage}%"></div>
+                                    </div>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span><i class="fas fa-calendar-alt me-2"></i> Fechamento: ${card.closingDay}</span>
+                                    <span><i class="fas fa-calendar-check me-2"></i> Vencimento: ${card.dueDay}</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Limite disponível:</span>
+                                    <strong>${formatCurrency(availableLimit)}</strong>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editCard(${card.id})">
+                                            <i class="fas fa-edit me-1"></i> Editar
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="viewCardDetails(${card.id})">
+                                            <i class="fas fa-eye me-1"></i> Detalhes
+                                        </button>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteCard(${card.id})">
+                                        <i class="fas fa-trash me-1"></i> Excluir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                cardsList.innerHTML += cardHtml;
+            });
+        }
+        
+        // Renderizar faturas
+        function renderInvoices() {
+            const invoicesList = document.getElementById('invoicesList');
+            const emptyState = document.getElementById('invoicesEmptyState');
+            
+            if (financeData.invoices.length === 0) {
+                invoicesList.innerHTML = '';
+                emptyState.classList.remove('d-none');
+                return;
+            }
+            
+            emptyState.classList.add('d-none');
+            invoicesList.innerHTML = '';
+            
+            financeData.invoices.forEach(invoice => {
+                const card = financeData.cards.find(c => c.id === invoice.cardId);
+                if (!card) return;
+                
+                const statusClass = invoice.status === 'open' ? 'status-open' : 
+                                   invoice.status === 'closed' ? 'status-closed' : 'status-paid';
+                const statusText = invoice.status === 'open' ? 'Aberta' : 
+                                  invoice.status === 'closed' ? 'Fechada' : 'Paga';
+                
+                const invoiceHtml = `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="mb-0">${card.name}</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <span class="badge ${statusClass}">${statusText}</span>
+                                    <span class="text-muted">${invoice.month}/${invoice.year}</span>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Fechamento:</span>
+                                        <strong>${formatDate(invoice.closingDate)}</strong>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Vencimento:</span>
+                                        <strong>${formatDate(invoice.dueDate)}</strong>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between">
+                                        <span>Valor total:</span>
+                                        <strong>${formatCurrency(invoice.total)}</strong>
+                                    </div>
+                                </div>
+                                ${invoice.status === 'paid' ? `
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Pago em:</span>
+                                            <strong>${formatDate(invoice.paymentDate)}</strong>
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <div class="d-flex justify-content-between">
+                                    <button class="btn btn-sm btn-outline-primary" onclick="viewInvoiceDetails(${invoice.id})">
+                                        <i class="fas fa-eye me-1"></i> Detalhes
+                                    </button>
+                                    ${getInvoiceActions(invoice)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                invoicesList.innerHTML += invoiceHtml;
+            });
+        }
+        
+        // Obter ações da fatura baseado no status
+        function getInvoiceActions(invoice) {
+            if (invoice.status === 'open') {
+                return `
+                    <button class="btn btn-sm btn-outline-warning" onclick="closeInvoice(${invoice.id})">
+                        <i class="fas fa-lock me-1"></i> Fechar
+                    </button>
+                `;
+            } else if (invoice.status === 'closed') {
+                return `
+                    <button class="btn btn-sm btn-outline-success" onclick="payInvoice(${invoice.id})">
+                        <i class="fas fa-money-bill-wave me-1"></i> Pagar
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="reopenInvoice(${invoice.id})">
+                        <i class="fas fa-unlock me-1"></i> Reabrir
+                    </button>
+                `;
+            } else {
+                return `
+                    <button class="btn btn-sm btn-outline-secondary" onclick="undoPayment(${invoice.id})">
+                        <i class="fas fa-undo me-1"></i> Desfazer
+                    </button>
+                `;
+            }
+        }
+        
+        // Renderizar transações
+        function renderTransactions() {
+            const transactionsList = document.getElementById('transactionsList');
+            const emptyState = document.getElementById('transactionsEmptyState');
+            
+            // Obter filtros
+            const cardFilter = document.getElementById('filterCard').value;
+            const invoiceFilter = document.getElementById('filterInvoice').value;
+            const categoryFilter = document.getElementById('filterCategory').value;
+            const searchFilter = document.getElementById('filterSearch').value.toLowerCase();
+            
+            // Filtrar transações
+            let filteredTransactions = financeData.transactions;
+            
+            if (cardFilter) {
+                filteredTransactions = filteredTransactions.filter(t => t.cardId == cardFilter);
+            }
+            
+            if (invoiceFilter) {
+                filteredTransactions = filteredTransactions.filter(t => t.invoiceId == invoiceFilter);
+            }
+            
+            if (categoryFilter) {
+                filteredTransactions = filteredTransactions.filter(t => t.categoryId == categoryFilter);
+            }
+            
+            if (searchFilter) {
+                filteredTransactions = filteredTransactions.filter(t => 
+                    t.store.toLowerCase().includes(searchFilter) || 
+                    (t.description && t.description.toLowerCase().includes(searchFilter))
+                );
+            }
+            
+            if (filteredTransactions.length === 0) {
+                transactionsList.innerHTML = '<p class="text-center py-4">Nenhuma transação encontrada com os filtros selecionados.</p>';
+                emptyState.classList.add('d-none');
+                return;
+            }
+            
+            emptyState.classList.add('d-none');
+            
+            let transactionsHtml = '';
+            filteredTransactions.forEach(transaction => {
+                const card = financeData.cards.find(c => c.id === transaction.cardId);
+                const category = financeData.categories.find(c => c.id === transaction.categoryId);
+                const subcategory = transaction.subcategoryId ? 
+                    financeData.subcategories.find(s => s.id === transaction.subcategoryId) : null;
+                
+                const transactionHtml = `
+                    <div class="transaction-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="d-flex align-items-center mb-1">
+                                    ${category ? `<span class="transaction-category" style="background-color: ${category.color}">
+                                        <i class="${category.icon}"></i> ${category.name}
+                                    </span>` : ''}
+                                    ${subcategory ? `<span class="badge bg-light text-dark">${subcategory.name}</span>` : ''}
+                                </div>
+                                <h6>${transaction.store}</h6>
+                                ${transaction.description ? `<p class="text-muted small mb-1">${transaction.description}</p>` : ''}
+                                <div class="text-muted small">
+                                    <i class="fas fa-credit-card me-1"></i> ${card ? card.name : 'Cartão não encontrado'} • 
+                                    <i class="fas fa-calendar me-1"></i> ${formatDate(transaction.date)}
+                                    ${transaction.type === 'installment' ? ` • ${transaction.currentInstallment}/${transaction.installments}x` : ''}
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <h5>${formatCurrency(transaction.value)}</h5>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="editTransaction(${transaction.id})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTransaction(${transaction.id})">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                transactionsHtml += transactionHtml;
+            });
+            
+            transactionsList.innerHTML = transactionsHtml;
+        }
+        
+        // Renderizar categorias
+        function renderCategories() {
+            const categoriesList = document.getElementById('categoriesList');
+            const subcategoriesList = document.getElementById('subcategoriesList');
+            
+            // Renderizar categorias
+            categoriesList.innerHTML = '';
+            financeData.categories.forEach(category => {
+                const totalSpent = calculateCategoryTotalSpent(category.id);
+                
+                const categoryHtml = `
+                    <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                        <div class="d-flex align-items-center">
+                            <div class="category-icon" style="background-color: ${category.color}">
+                                <i class="${category.icon}"></i>
+                            </div>
+                            <div>
+                                <h6 class="mb-0">${category.name}</h6>
+                                <small class="text-muted">${formatCurrency(totalSpent)}</small>
+                            </div>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editCategory(${category.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteCategory(${category.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                categoriesList.innerHTML += categoryHtml;
+            });
+            
+            // Renderizar subcategorias
+            subcategoriesList.innerHTML = '';
+            financeData.subcategories.forEach(subcategory => {
+                const category = financeData.categories.find(c => c.id === subcategory.categoryId);
+                
+                const subcategoryHtml = `
+                    <div class="d-flex justify-content-between align-items-center p-2 border-bottom">
+                        <div>
+                            <h6 class="mb-0">${subcategory.name}</h6>
+                            <small class="text-muted">${category ? category.name : 'Categoria não encontrada'}</small>
+                        </div>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="editSubcategory(${subcategory.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteSubcategory(${subcategory.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                subcategoriesList.innerHTML += subcategoryHtml;
+            });
+        }
+        
+        // Configurar filtros de relatório
+        function setupReportFilters() {
+            updateCardOptions();
+        }
+        
+        // Salvar cartão
+        function saveCard() {
+            const cardId = document.getElementById('cardId').value;
+            const cardName = document.getElementById('cardName').value;
+            const cardClosingDay = parseInt(document.getElementById('cardClosingDay').value);
+            const cardDueDay = parseInt(document.getElementById('cardDueDay').value);
+            const cardLimit = parseFloat(document.getElementById('cardLimit').value);
+            
+            if (cardId) {
+                // Editar cartão existente
+                if (!confirm('Tem certeza que deseja salvar as alterações neste cartão?')) {
+                    return;
+                }
+                
+                const cardIndex = financeData.cards.findIndex(c => c.id == cardId);
+                if (cardIndex !== -1) {
+                    financeData.cards[cardIndex] = {
+                        id: parseInt(cardId),
+                        name: cardName,
+                        closingDay: cardClosingDay,
+                        dueDay: cardDueDay,
+                        creditLimit: cardLimit
+                    };
+                }
+            } else {
+                // Criar novo cartão
+                if (financeData.cards.length >= 5) {
+                    alert('Limite máximo de 5 cartões por moeda atingido.');
+                    return;
+                }
+                
+                const newCard = {
+                    id: Date.now(),
+                    name: cardName,
+                    closingDay: cardClosingDay,
+                    dueDay: cardDueDay,
+                    creditLimit: cardLimit
+                };
+                
+                financeData.cards.push(newCard);
+            }
+            
+            saveFinanceData();
+            updateCardOptions();
+            renderCards();
+            bootstrap.Modal.getInstance(document.getElementById('cardModal')).hide();
+            document.getElementById('cardForm').reset();
+        }
+        
+        // Salvar fatura
+        function saveInvoice() {
+            const cardId = parseInt(document.getElementById('invoiceCard').value);
+            const month = parseInt(document.getElementById('invoiceMonth').value);
+            const year = parseInt(document.getElementById('invoiceYear').value);
+            
+            // Verificar se já existe fatura para este cartão/mês/ano
+            const existingInvoice = financeData.invoices.find(i => 
+                i.cardId === cardId && i.month === month && i.year === year
+            );
+            
+            if (existingInvoice) {
+                alert('Já existe uma fatura para este cartão neste período.');
+                return;
+            }
+            
+            const card = financeData.cards.find(c => c.id === cardId);
+            if (!card) return;
+            
+            // Calcular datas de fechamento e vencimento
+            const closingDate = new Date(year, month - 1, card.closingDay);
+            const dueDate = new Date(year, month - 1, card.dueDay);
+            
+            // Se o vencimento for antes do fechamento, ajustar para o mês seguinte
+            if (dueDate <= closingDate) {
+                dueDate.setMonth(dueDate.getMonth() + 1);
+            }
+            
+            const newInvoice = {
+                id: Date.now(),
+                cardId: cardId,
+                month: month,
+                year: year,
+                status: 'open',
+                total: 0,
+                closingDate: closingDate.toISOString(),
+                dueDate: dueDate.toISOString(),
+                transactions: []
+            };
+            
+            financeData.invoices.push(newInvoice);
+            saveFinanceData();
+            renderInvoices();
+            bootstrap.Modal.getInstance(document.getElementById('invoiceModal')).hide();
+            document.getElementById('invoiceForm').reset();
+        }
+        
+        // Salvar transação
+        function saveTransaction() {
+            const transactionId = document.getElementById('transactionId').value;
+            const editMode = document.getElementById('editMode').value === 'true';
+            const editInstallmentMode = document.getElementById('editInstallmentMode').value;
+            
+            const cardId = parseInt(document.getElementById('transactionCard').value);
+            const invoiceId = parseInt(document.getElementById('transactionInvoice').value);
+            const store = document.getElementById('transactionStore').value;
+            const value = parseFloat(document.getElementById('transactionValue').value);
+            const date = document.getElementById('transactionDate').value;
+            const categoryId = parseInt(document.getElementById('transactionCategory').value);
+            const subcategoryId = document.getElementById('transactionSubcategory').value ? 
+                parseInt(document.getElementById('transactionSubcategory').value) : null;
+            const type = document.querySelector('input[name="transactionType"]:checked').value;
+            const description = document.getElementById('transactionDescription').value;
+            
+            // Confirmação para lançamento
+            if (!editMode) {
+                if (!confirm(`Confirma o lançamento de ${formatCurrency(value)} em ${store}?`)) {
+                    return;
+                }
+            }
+            
+            let installments = 1;
+            let currentInstallment = 1;
+            
+            if (type === 'installment') {
+                installments = parseInt(document.getElementById('transactionInstallments').value);
+            }
+            
+            if (editMode && editInstallmentMode) {
+                // Modo de edição de parcelas
+                const editOption = document.querySelector('input[name="editInstallmentOption"]:checked').value;
+                updateInstallmentTransaction(transactionId, editOption, {
+                    store, value, date, categoryId, subcategoryId, description
+                });
+            } else if (editMode) {
+                // Edição normal (não é parcelado ou é a primeira parcela)
+                const transaction = financeData.transactions.find(t => t.id == transactionId);
+                if (transaction) {
+                    transaction.store = store;
+                    transaction.value = value;
+                    transaction.date = date;
+                    transaction.categoryId = categoryId;
+                    transaction.subcategoryId = subcategoryId;
+                    transaction.description = description;
+                }
+            } else {
+                // Criar novas transações (se parcelado, cria múltiplas)
+                const transactions = [];
+                const installmentValue = value / installments;
+                
+                for (let i = 0; i < installments; i++) {
+                    // Encontrar a fatura correta para cada parcela
+                    let targetInvoiceId = invoiceId;
+                    
+                    if (i > 0) {
+                        // Para parcelas futuras, encontrar ou criar a fatura do mês correspondente
+                        const invoice = financeData.invoices.find(inv => inv.id === invoiceId);
+                        if (invoice) {
+                            const targetDate = new Date(invoice.closingDate);
+                            targetDate.setMonth(targetDate.getMonth() + i);
+                            
+                            const targetMonth = targetDate.getMonth() + 1;
+                            const targetYear = targetDate.getFullYear();
+                            
+                            let targetInvoice = financeData.invoices.find(inv => 
+                                inv.cardId === cardId && inv.month === targetMonth && inv.year === targetYear
+                            );
+                            
+                            if (!targetInvoice) {
+                                // Criar nova fatura se não existir
+                                const card = financeData.cards.find(c => c.id === cardId);
+                                if (card) {
+                                    const closingDate = new Date(targetYear, targetMonth - 1, card.closingDay);
+                                    const dueDate = new Date(targetYear, targetMonth - 1, card.dueDay);
+                                    
+                                    if (dueDate <= closingDate) {
+                                        dueDate.setMonth(dueDate.getMonth() + 1);
+                                    }
+                                    
+                                    targetInvoice = {
+                                        id: Date.now() + i,
+                                        cardId: cardId,
+                                        month: targetMonth,
+                                        year: targetYear,
+                                        status: 'open',
+                                        total: 0,
+                                        closingDate: closingDate.toISOString(),
+                                        dueDate: dueDate.toISOString(),
+                                        transactions: []
+                                    };
+                                    
+                                    financeData.invoices.push(targetInvoice);
+                                }
+                            }
+                            
+                            targetInvoiceId = targetInvoice.id;
+                        }
+                    }
+                    
+                    const transaction = {
+                        id: Date.now() + i,
+                        cardId: cardId,
+                        invoiceId: targetInvoiceId,
+                        store: store,
+                        value: installmentValue,
+                        categoryId: categoryId,
+                        subcategoryId: subcategoryId,
+                        type: type,
+                        installments: installments,
+                        currentInstallment: i + 1,
+                        date: date,
+                        description: description,
+                        parentTransactionId: i > 0 ? transactions[0].id : null
+                    };
+                    
+                    transactions.push(transaction);
+                    
+                    // Adicionar à fatura
+                    const invoice = financeData.invoices.find(inv => inv.id === targetInvoiceId);
+                    if (invoice) {
+                        invoice.transactions.push(transaction.id);
+                        invoice.total += installmentValue;
+                    }
+                }
+                
+                // Adicionar todas as transações
+                financeData.transactions.push(...transactions);
+            }
+            
+            saveFinanceData();
+            renderTransactions();
+            renderInvoices();
+            renderCards();
+            bootstrap.Modal.getInstance(document.getElementById('transactionModal')).hide();
+            resetTransactionForm();
+        }
+        
+        // Atualizar transação parcelada
+        function updateInstallmentTransaction(transactionId, editOption, newData) {
+            const transaction = financeData.transactions.find(t => t.id == transactionId);
+            if (!transaction) return;
+            
+            if (editOption === 'current') {
+                // Editar apenas esta parcela
+                transaction.store = newData.store;
+                transaction.value = newData.value;
+                transaction.date = newData.date;
+                transaction.categoryId = newData.categoryId;
+                transaction.subcategoryId = newData.subcategoryId;
+                transaction.description = newData.description;
+            } else {
+                // Encontrar todas as parcelas relacionadas
+                let relatedTransactions = [];
+                
+                if (transaction.parentTransactionId) {
+                    // É uma parcela subsequente
+                    const parentTransaction = financeData.transactions.find(t => t.id === transaction.parentTransactionId);
+                    if (parentTransaction) {
+                        relatedTransactions = financeData.transactions.filter(t => 
+                            t.parentTransactionId === parentTransaction.id || t.id === parentTransaction.id
+                        );
+                    }
+                } else {
+                    // É a primeira parcela
+                    relatedTransactions = financeData.transactions.filter(t => 
+                        t.parentTransactionId === transaction.id || t.id === transaction.id
+                    );
+                }
+                
+                // Filtrar baseado na opção de edição
+                if (editOption === 'remaining') {
+                    // Editar apenas parcelas não pagas
+                    const paidInvoices = financeData.invoices.filter(i => i.status === 'paid').map(i => i.id);
+                    relatedTransactions = relatedTransactions.filter(t => !paidInvoices.includes(t.invoiceId));
+                }
+                // Se for 'all', edita todas as parcelas (não precisa filtrar)
+                
+                // Atualizar todas as transações selecionadas
+                relatedTransactions.forEach(t => {
+                    t.store = newData.store;
+                    t.categoryId = newData.categoryId;
+                    t.subcategoryId = newData.subcategoryId;
+                    t.description = newData.description;
+                    
+                    // Se for o valor total, recalcular as parcelas
+                    if (newData.value && editOption === 'all') {
+                        const newInstallmentValue = newData.value / relatedTransactions.length;
+                        t.value = newInstallmentValue;
+                    } else if (newData.value && editOption === 'remaining') {
+                        const newInstallmentValue = newData.value / relatedTransactions.length;
+                        t.value = newInstallmentValue;
+                    }
+                });
+                
+                // Recalcular totais das faturas
+                recalculateInvoiceTotals();
+            }
+        }
+        
+        // Resetar formulário de transação
+        function resetTransactionForm() {
+            document.getElementById('transactionForm').reset();
+            document.getElementById('transactionId').value = '';
+            document.getElementById('editMode').value = 'false';
+            document.getElementById('editInstallmentMode').value = '';
+            document.getElementById('installmentInfo').classList.add('d-none');
+            document.getElementById('installmentEditOptions').classList.add('d-none');
+            document.getElementById('installmentOptions').classList.add('d-none');
+            document.getElementById('transactionModalTitle').textContent = 'Novo Lançamento';
+        }
+        
+        // Salvar categoria
+        function saveCategory() {
+            const categoryId = document.getElementById('categoryId').value;
+            const categoryName = document.getElementById('categoryName').value;
+            const categoryColor = document.getElementById('categoryColor').value;
+            const categoryIcon = document.getElementById('categoryIcon').value;
+            
+            if (categoryId) {
+                // Editar categoria existente
+                if (!confirm('Tem certeza que deseja salvar as alterações nesta categoria?')) {
+                    return;
+                }
+                
+                const categoryIndex = financeData.categories.findIndex(c => c.id == categoryId);
+                if (categoryIndex !== -1) {
+                    financeData.categories[categoryIndex] = {
+                        id: parseInt(categoryId),
+                        name: categoryName,
+                        color: categoryColor,
+                        icon: categoryIcon
+                    };
+                }
+            } else {
+                // Criar nova categoria
+                const newCategory = {
+                    id: Date.now(),
+                    name: categoryName,
+                    color: categoryColor,
+                    icon: categoryIcon
+                };
+                
+                financeData.categories.push(newCategory);
+            }
+            
+            saveFinanceData();
+            updateCategoryOptions();
+            renderCategories();
+            bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
+            document.getElementById('categoryForm').reset();
+        }
+        
+        // Salvar subcategoria
+        function saveSubcategory() {
+            const subcategoryId = document.getElementById('subcategoryId').value;
+            const subcategoryName = document.getElementById('subcategoryName').value;
+            const categoryId = parseInt(document.getElementById('subcategoryCategory').value);
+            
+            if (subcategoryId) {
+                // Editar subcategoria existente
+                if (!confirm('Tem certeza que deseja salvar as alterações nesta subcategoria?')) {
+                    return;
+                }
+                
+                const subcategoryIndex = financeData.subcategories.findIndex(s => s.id == subcategoryId);
+                if (subcategoryIndex !== -1) {
+                    financeData.subcategories[subcategoryIndex] = {
+                        id: parseInt(subcategoryId),
+                        name: subcategoryName,
+                        categoryId: categoryId
+                    };
+                }
+            } else {
+                // Criar nova subcategoria
+                const newSubcategory = {
+                    id: Date.now(),
+                    name: subcategoryName,
+                    categoryId: categoryId
+                };
+                
+                financeData.subcategories.push(newSubcategory);
+            }
+            
+            saveFinanceData();
+            renderCategories();
+            bootstrap.Modal.getInstance(document.getElementById('subcategoryModal')).hide();
+            document.getElementById('subcategoryForm').reset();
+        }
+        
+        // Editar cartão
+        function editCard(cardId) {
+            const card = financeData.cards.find(c => c.id === cardId);
+            if (!card) return;
+            
+            document.getElementById('cardId').value = card.id;
+            document.getElementById('cardName').value = card.name;
+            document.getElementById('cardClosingDay').value = card.closingDay;
+            document.getElementById('cardDueDay').value = card.dueDay;
+            document.getElementById('cardLimit').value = card.creditLimit;
+            
+            document.getElementById('cardModalTitle').textContent = 'Editar Cartão';
+            new bootstrap.Modal(document.getElementById('cardModal')).show();
+        }
+        
+        // Editar categoria
+        function editCategory(categoryId) {
+            const category = financeData.categories.find(c => c.id === categoryId);
+            if (!category) return;
+            
+            document.getElementById('categoryId').value = category.id;
+            document.getElementById('categoryName').value = category.name;
+            document.getElementById('categoryColor').value = category.color;
+            document.getElementById('categoryIcon').value = category.icon;
+            
+            document.getElementById('categoryModalTitle').textContent = 'Editar Categoria';
+            new bootstrap.Modal(document.getElementById('categoryModal')).show();
+        }
+        
+        // Editar subcategoria
+        function editSubcategory(subcategoryId) {
+            const subcategory = financeData.subcategories.find(s => s.id === subcategoryId);
+            if (!subcategory) return;
+            
+            document.getElementById('subcategoryId').value = subcategory.id;
+            document.getElementById('subcategoryName').value = subcategory.name;
+            document.getElementById('subcategoryCategory').value = subcategory.categoryId;
+            
+            document.getElementById('subcategoryModalTitle').textContent = 'Editar Subcategoria';
+            new bootstrap.Modal(document.getElementById('subcategoryModal')).show();
+        }
+        
+        // Editar transação
+        function editTransaction(transactionId) {
+            const transaction = financeData.transactions.find(t => t.id === transactionId);
+            if (!transaction) return;
+            
+            // Resetar formulário
+            resetTransactionForm();
+            
+            // Configurar modo de edição
+            document.getElementById('transactionId').value = transaction.id;
+            document.getElementById('editMode').value = 'true';
+            document.getElementById('transactionModalTitle').textContent = 'Editar Lançamento';
+            
+            // Preencher formulário
+            document.getElementById('transactionCard').value = transaction.cardId;
+            updateInvoiceOptions(transaction.cardId);
+            document.getElementById('transactionInvoice').value = transaction.invoiceId;
+            document.getElementById('transactionStore').value = transaction.store;
+            document.getElementById('transactionValue').value = transaction.value;
+            document.getElementById('transactionDate').value = transaction.date;
+            document.getElementById('transactionCategory').value = transaction.categoryId;
+            updateSubcategoryOptions(transaction.categoryId);
+            document.getElementById('transactionSubcategory').value = transaction.subcategoryId || '';
+            document.getElementById('transactionDescription').value = transaction.description || '';
+            
+            if (transaction.type === 'installment') {
+                document.getElementById('installmentType').checked = true;
+                document.getElementById('installmentOptions').classList.remove('d-none');
+                document.getElementById('transactionInstallments').value = transaction.installments;
+                
+                // Mostrar informações da parcela
+                const installmentInfo = document.getElementById('installmentInfo');
+                const installmentDetails = document.getElementById('installmentDetails');
+                installmentDetails.textContent = `Parcela ${transaction.currentInstallment} de ${transaction.installments}`;
+                installmentInfo.classList.remove('d-none');
+                
+                // Mostrar opções de edição de parcelas
+                document.getElementById('installmentEditOptions').classList.remove('d-none');
+                document.getElementById('editInstallmentMode').value = 'installment';
+            } else {
+                document.getElementById('cashType').checked = true;
+                document.getElementById('installmentOptions').classList.add('d-none');
+            }
+            
+            // Não excluir a transação agora - será atualizada ao salvar
+            new bootstrap.Modal(document.getElementById('transactionModal')).show();
+        }
+        
+        // Excluir cartão
+        function deleteCard(cardId) {
+            if (!confirm('Tem certeza que deseja excluir este cartão? Todas as faturas e transações associadas serão removidas.')) {
+                return;
+            }
+            
+            if (!confirm('Esta ação não pode ser desfeita. Deseja continuar?')) {
+                return;
+            }
+            
+            // Remover faturas do cartão
+            financeData.invoices = financeData.invoices.filter(i => i.cardId !== cardId);
+            
+            // Remover transações do cartão
+            financeData.transactions = financeData.transactions.filter(t => t.cardId !== cardId);
+            
+            // Remover cartão
+            financeData.cards = financeData.cards.filter(c => c.id !== cardId);
+            
+            saveFinanceData();
+            updateCardOptions();
+            renderAllData();
+        }
+        
+        // Excluir categoria
+        function deleteCategory(categoryId) {
+            // Verificar se há transações associadas
+            const hasTransactions = financeData.transactions.some(t => t.categoryId === categoryId);
+            
+            if (hasTransactions) {
+                alert('Não é possível excluir esta categoria pois existem transações associadas.');
+                return;
+            }
+            
+            if (!confirm('Tem certeza que deseja excluir esta categoria?')) {
+                return;
+            }
+            
+            if (!confirm('Esta ação não pode ser desfeita. Deseja continuar?')) {
+                return;
+            }
+            
+            // Remover subcategorias associadas
+            financeData.subcategories = financeData.subcategories.filter(s => s.categoryId !== categoryId);
+            
+            // Remover categoria
+            financeData.categories = financeData.categories.filter(c => c.id !== categoryId);
+            
+            saveFinanceData();
+            updateCategoryOptions();
+            renderCategories();
+        }
+        
+        // Excluir subcategoria
+        function deleteSubcategory(subcategoryId) {
+            // Verificar se há transações associadas
+            const hasTransactions = financeData.transactions.some(t => t.subcategoryId === subcategoryId);
+            
+            if (hasTransactions) {
+                alert('Não é possível excluir esta subcategoria pois existem transações associadas.');
+                return;
+            }
+            
+            if (!confirm('Tem certeza que deseja excluir esta subcategoria?')) {
+                return;
+            }
+            
+            if (!confirm('Esta ação não pode ser desfeita. Deseja continuar?')) {
+                return;
+            }
+            
+            financeData.subcategories = financeData.subcategories.filter(s => s.id !== subcategoryId);
+            saveFinanceData();
+            renderCategories();
+        }
+        
+        // Excluir transação
+        function deleteTransaction(transactionId) {
+            if (!confirm('Tem certeza que deseja excluir esta transação?')) {
+                return;
+            }
+            
+            if (!confirm('Esta ação não pode ser desfeita. Deseja continuar?')) {
+                return;
+            }
+            
+            const transaction = financeData.transactions.find(t => t.id === transactionId);
+            if (!transaction) return;
+            
+            // Se for parcelado, excluir todas as parcelas
+            if (transaction.type === 'installment' && !transaction.parentTransactionId) {
+                financeData.transactions = financeData.transactions.filter(t => 
+                    t.id !== transactionId && t.parentTransactionId !== transactionId
+                );
+            } else {
+                financeData.transactions = financeData.transactions.filter(t => t.id !== transactionId);
+            }
+            
+            // Recalcular totais das faturas
+            recalculateInvoiceTotals();
+            
+            saveFinanceData();
+            renderAllData();
+        }
+        
+        // Fechar fatura
+        function closeInvoice(invoiceId) {
+            if (!confirm('Tem certeza que deseja fechar esta fatura? Após fechada, não serão permitidos novos lançamentos.')) {
+                return;
+            }
+            
+            const invoice = financeData.invoices.find(i => i.id === invoiceId);
+            if (!invoice) return;
+            
+            invoice.status = 'closed';
+            saveFinanceData();
+            renderInvoices();
+        }
+        
+        // Reabrir fatura
+        function reopenInvoice(invoiceId) {
+            if (!confirm('Tem certeza que deseja reabrir esta fatura?')) {
+                return;
+            }
+            
+            const invoice = financeData.invoices.find(i => i.id === invoiceId);
+            if (!invoice) return;
+            
+            invoice.status = 'open';
+            saveFinanceData();
+            renderInvoices();
+        }
+        
+        // Pagar fatura
+        function payInvoice(invoiceId) {
+            const invoice = financeData.invoices.find(i => i.id === invoiceId);
+            if (!invoice) return;
+            
+            const paymentValue = prompt('Valor do pagamento:', invoice.total.toFixed(2));
+            if (!paymentValue) return;
+            
+            const value = parseFloat(paymentValue);
+            if (isNaN(value) || value <= 0) {
+                alert('Valor inválido.');
+                return;
+            }
+            
+            if (!confirm(`Confirma pagamento da Fatura no valor de ${formatCurrency(value)}?`)) {
+                return;
+            }
+            
+            invoice.status = 'paid';
+            invoice.paymentDate = new Date().toISOString();
+            invoice.paymentValue = value;
+            
+            // Se houver diferença, criar lançamento na próxima fatura
+            if (value < invoice.total) {
+                const difference = invoice.total - value;
+                
+                // Encontrar a próxima fatura
+                const card = financeData.cards.find(c => c.id === invoice.cardId);
+                if (card) {
+                    const nextMonth = invoice.month === 12 ? 1 : invoice.month + 1;
+                    const nextYear = invoice.month === 12 ? invoice.year + 1 : invoice.year;
+                    
+                    let nextInvoice = financeData.invoices.find(i => 
+                        i.cardId === invoice.cardId && i.month === nextMonth && i.year === nextYear
+                    );
+                    
+                    if (!nextInvoice) {
+                        // Criar próxima fatura se não existir
+                        const closingDate = new Date(nextYear, nextMonth - 1, card.closingDay);
+                        const dueDate = new Date(nextYear, nextMonth - 1, card.dueDay);
+                        
+                        if (dueDate <= closingDate) {
+                            dueDate.setMonth(dueDate.getMonth() + 1);
+                        }
+                        
+                        nextInvoice = {
+                            id: Date.now(),
+                            cardId: invoice.cardId,
+                            month: nextMonth,
+                            year: nextYear,
+                            status: 'open',
+                            total: 0,
+                            closingDate: closingDate.toISOString(),
+                            dueDate: dueDate.toISOString(),
+                            transactions: []
+                        };
+                        
+                        financeData.invoices.push(nextInvoice);
+                    }
+                    
+                    // Criar transação de diferença
+                    const differenceTransaction = {
+                        id: Date.now(),
+                        cardId: invoice.cardId,
+                        invoiceId: nextInvoice.id,
+                        store: 'Diferença da Fatura Anterior',
+                        value: difference,
+                        categoryId: financeData.categories[0].id, // Primeira categoria
+                        subcategoryId: null,
+                        type: 'cash',
+                        installments: 1,
+                        currentInstallment: 1,
+                        date: new Date().toISOString().split('T')[0],
+                        description: `Diferença de pagamento da fatura ${invoice.month}/${invoice.year}`
+                    };
+                    
+                    financeData.transactions.push(differenceTransaction);
+                    nextInvoice.transactions.push(differenceTransaction.id);
+                    nextInvoice.total += difference;
+                }
+            }
+            
+            saveFinanceData();
+            renderAllData();
+        }
+        
+        // Desfazer pagamento
+        function undoPayment(invoiceId) {
+            if (!confirm('Tem certeza que deseja desfazer o pagamento desta fatura?')) {
+                return;
+            }
+            
+            const invoice = financeData.invoices.find(i => i.id === invoiceId);
+            if (!invoice) return;
+            
+            invoice.status = 'closed';
+            delete invoice.paymentDate;
+            delete invoice.paymentValue;
+            
+            saveFinanceData();
+            renderInvoices();
+        }
+        
+        // Visualizar detalhes do cartão
+        function viewCardDetails(cardId) {
+            const card = financeData.cards.find(c => c.id === cardId);
+            if (!card) return;
+            
+            const totalSpent = calculateCardTotalSpent(cardId);
+            const availableLimit = card.creditLimit - totalSpent;
+            
+            alert(`Detalhes do Cartão:\n\n` +
+                  `Nome: ${card.name}\n` +
+                  `Fechamento: Dia ${card.closingDay}\n` +
+                  `Vencimento: Dia ${card.dueDay}\n` +
+                  `Limite Total: ${formatCurrency(card.creditLimit)}\n` +
+                  `Total Gasto: ${formatCurrency(totalSpent)}\n` +
+                  `Limite Disponível: ${formatCurrency(availableLimit)}`);
+        }
+        
+        // Visualizar detalhes da fatura
+        function viewInvoiceDetails(invoiceId) {
+            const invoice = financeData.invoices.find(i => i.id === invoiceId);
+            if (!invoice) return;
+            
+            const card = financeData.cards.find(c => c.id === invoice.cardId);
+            const transactions = financeData.transactions.filter(t => invoice.transactions.includes(t.id));
+            
+            let details = `Detalhes da Fatura:\n\n` +
+                         `Cartão: ${card ? card.name : 'Não encontrado'}\n` +
+                         `Período: ${invoice.month}/${invoice.year}\n` +
+                         `Status: ${invoice.status === 'open' ? 'Aberta' : invoice.status === 'closed' ? 'Fechada' : 'Paga'}\n` +
+                         `Fechamento: ${formatDate(invoice.closingDate)}\n` +
+                         `Vencimento: ${formatDate(invoice.dueDate)}\n` +
+                         `Valor Total: ${formatCurrency(invoice.total)}\n\n`;
+            
+            if (invoice.status === 'paid') {
+                details += `Pago em: ${formatDate(invoice.paymentDate)}\n` +
+                          `Valor Pago: ${formatCurrency(invoice.paymentValue)}\n\n`;
+            }
+            
+            details += 'Lançamentos:\n';
+            transactions.forEach(t => {
+                details += `- ${t.store}: ${formatCurrency(t.value)}\n`;
+            });
+            
+            alert(details);
+        }
+        
+        // Mostrar perfil do usuário
+        function showUserProfile() {
+            if (!currentUser) return;
+            
+            document.getElementById('profileAvatar').src = currentUser.photoURL || 'https://picsum.photos/seed/user/100/100.jpg';
+            document.getElementById('profileName').textContent = currentUser.displayName || currentUser.email;
+            document.getElementById('profileEmail').textContent = currentUser.email;
+            document.getElementById('profileUid').textContent = currentUser.uid;
+            
+            const statusBadge = document.getElementById('profileStatus');
+            statusBadge.textContent = 'Ativo';
+            statusBadge.className = 'status-badge status-active';
+            
+            new bootstrap.Modal(document.getElementById('userProfileModal')).show();
+        }
+        
+        // Gerar relatório
+        function generateReport() {
+            const period = document.getElementById('reportPeriod').value;
+            const cardId = document.getElementById('reportCard').value;
+            const reportType = document.getElementById('reportType').value;
+            
+            // Calcular período
+            let startDate, endDate;
+            const today = new Date();
+            
+            switch (period) {
+                case 'current':
+                    startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    break;
+                case 'previous':
+                    startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+                    endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+                    break;
+                case '3months':
+                    startDate = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+                    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    break;
+                case '6months':
+                    startDate = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+                    endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    break;
+                case 'year':
+                    startDate = new Date(today.getFullYear(), 0, 1);
+                    endDate = new Date(today.getFullYear(), 11, 31);
+                    break;
+                case 'custom':
+                    // Para simplificar, usaremos o ano atual
+                    startDate = new Date(today.getFullYear(), 0, 1);
+                    endDate = new Date(today.getFullYear(), 11, 31);
+                    break;
+            }
+            
+            // Filtrar transações
+            let filteredTransactions = financeData.transactions.filter(t => {
+                const transactionDate = new Date(t.date);
+                return transactionDate >= startDate && transactionDate <= endDate;
+            });
+            
+            if (cardId) {
+                filteredTransactions = filteredTransactions.filter(t => t.cardId == cardId);
+            }
+            
+            if (filteredTransactions.length === 0) {
+                alert('Nenhuma transação encontrada para o período selecionado.');
+                return;
+            }
+            
+            // Calcular totais
+            const total = filteredTransactions.reduce((sum, t) => sum + t.value, 0);
+            const months = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24 * 30));
+            const average = total / months;
+            const highest = Math.max(...filteredTransactions.map(t => t.value));
+            
+            // Atualizar cards de resumo
+            document.getElementById('reportTotal').textContent = formatCurrency(total);
+            document.getElementById('reportAverage').textContent = formatCurrency(average);
+            document.getElementById('reportHighest').textContent = formatCurrency(highest);
+            
+            // Calcular variação (simplificado)
+            const previousPeriodStart = new Date(startDate);
+            previousPeriodStart.setMonth(previousPeriodStart.getMonth() - months);
+            
+            const previousTransactions = financeData.transactions.filter(t => {
+                const transactionDate = new Date(t.date);
+                return transactionDate >= previousPeriodStart && transactionDate < startDate;
+            });
+            
+            const previousTotal = previousTransactions.reduce((sum, t) => sum + t.value, 0);
+            const variation = previousTotal > 0 ? ((total - previousTotal) / previousTotal * 100) : 0;
+            
+            const variationElement = document.getElementById('reportVariation');
+            variationElement.textContent = `${variation >= 0 ? '+' : ''}${variation.toFixed(1)}%`;
+            variationElement.style.color = variation >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
+            
+            // Gerar gráfico
+            generateChart(filteredTransactions, reportType);
+            
+            // Mostrar conteúdo do relatório
+            document.getElementById('reportContent').classList.remove('d-none');
+            document.getElementById('reportsEmptyState').classList.add('d-none');
+        }
+        
+        // Gerar gráfico
+        function generateChart(transactions, type) {
+            const ctx = document.getElementById('reportChart').getContext('2d');
+            
+            // Destruir gráfico anterior se existir
+            if (window.reportChartInstance) {
+                window.reportChartInstance.destroy();
+            }
+            
+            let chartData;
+            
+            switch (type) {
+                case 'category':
+                    chartData = generateCategoryChartData(transactions);
+                    break;
+                case 'monthly':
+                    chartData = generateMonthlyChartData(transactions);
+                    break;
+                case 'annual':
+                    chartData = generateAnnualChartData(transactions);
+                    break;
+                case 'ranking':
+                    chartData = generateRankingChartData(transactions);
+                    break;
+            }
+            
+            window.reportChartInstance = new Chart(ctx, chartData);
+        }
+        
+        // Gerar dados para gráfico por categoria
+        function generateCategoryChartData(transactions) {
+            const categoryTotals = {};
+            
+            transactions.forEach(t => {
+                const category = financeData.categories.find(c => c.id === t.categoryId);
+                if (category) {
+                    if (!categoryTotals[category.name]) {
+                        categoryTotals[category.name] = {
+                            total: 0,
+                            color: category.color
+                        };
+                    }
+                    categoryTotals[category.name].total += t.value;
+                }
+            });
+            
+            const labels = Object.keys(categoryTotals);
+            const data = labels.map(label => categoryTotals[label].total);
+            const backgroundColor = labels.map(label => categoryTotals[label].color);
+            
+            return {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColor,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = formatCurrency(context.raw);
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.raw / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+        
+        // Gerar dados para gráfico mensal
+        function generateMonthlyChartData(transactions) {
+            const monthlyTotals = {};
+            
+            transactions.forEach(t => {
+                const date = new Date(t.date);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                
+                if (!monthlyTotals[monthKey]) {
+                    monthlyTotals[monthKey] = 0;
+                }
+                monthlyTotals[monthKey] += t.value;
+            });
+            
+            const sortedMonths = Object.keys(monthlyTotals).sort();
+            const labels = sortedMonths.map(month => {
+                const [year, monthNum] = month.split('-');
+                return `${monthNum}/${year}`;
+            });
+            const data = sortedMonths.map(month => monthlyTotals[month]);
+            
+            return {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Gastos Mensais',
+                        data: data,
+                        backgroundColor: 'rgba(67, 97, 238, 0.6)',
+                        borderColor: 'rgba(67, 97, 238, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Total: ${formatCurrency(context.raw)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+        
+        // Gerar dados para gráfico anual
+        function generateAnnualChartData(transactions) {
+            const annualTotals = {};
+            
+            transactions.forEach(t => {
+                const year = new Date(t.date).getFullYear();
+                
+                if (!annualTotals[year]) {
+                    annualTotals[year] = 0;
+                }
+                annualTotals[year] += t.value;
+            });
+            
+            const sortedYears = Object.keys(annualTotals).sort();
+            const labels = sortedYears;
+            const data = sortedYears.map(year => annualTotals[year]);
+            
+            return {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Gastos Anuais',
+                        data: data,
+                        borderColor: 'rgba(67, 97, 238, 1)',
+                        backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Total: ${formatCurrency(context.raw)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+        
+        // Gerar dados para gráfico de ranking
+        function generateRankingChartData(transactions) {
+            const storeTotals = {};
+            
+            transactions.forEach(t => {
+                if (!storeTotals[t.store]) {
+                    storeTotals[t.store] = 0;
+                }
+                storeTotals[t.store] += t.value;
+            });
+            
+            const sortedStores = Object.entries(storeTotals)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10); // Top 10
+            
+            const labels = sortedStores.map(item => item[0]);
+            const data = sortedStores.map(item => item[1]);
+            
+            return {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Gastos por Loja',
+                        data: data,
+                        backgroundColor: 'rgba(247, 37, 133, 0.6)',
+                        borderColor: 'rgba(247, 37, 133, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return formatCurrency(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Total: ${formatCurrency(context.raw)}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+        
+        // Exportar relatório para PDF
+        function exportReportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Título
+            doc.setFontSize(18);
+            doc.text('Relatório Financeiro', 105, 20, { align: 'center' });
+            
+            // Período
+            doc.setFontSize(12);
+            const period = document.getElementById('reportPeriod').value;
+            const periodText = {
+                'current': 'Mês Atual',
+                'previous': 'Mês Anterior',
+                '3months': 'Últimos 3 Meses',
+                '6months': 'Últimos 6 Meses',
+                'year': 'Ano Atual',
+                'custom': 'Personalizado'
+            };
+            doc.text(`Período: ${periodText[period]}`, 20, 30);
+            
+            // Resumo
+            doc.setFontSize(14);
+            doc.text('Resumo', 20, 45);
+            
+            doc.setFontSize(12);
+            doc.text(`Total Gasto: ${document.getElementById('reportTotal').textContent}`, 20, 55);
+            doc.text(`Média Mensal: ${document.getElementById('reportAverage').textContent}`, 20, 65);
+            doc.text(`Maior Gasto: ${document.getElementById('reportHighest').textContent}`, 20, 75);
+            doc.text(`Variação: ${document.getElementById('reportVariation').textContent}`, 20, 85);
+            
+            // Gráfico
+            const canvas = document.getElementById('reportChart');
+            const imgData = canvas.toDataURL('image/png');
+            doc.addImage(imgData, 'PNG', 20, 95, 170, 100);
+            
+            // Salvar
+            doc.save('relatorio_financeiro.pdf');
+        }
+        
+        // Limpar período
+        function cleanPeriod() {
+            const startDate = document.getElementById('cleanStartDate').value;
+            const endDate = document.getElementById('cleanEndDate').value;
+            
+            if (!startDate || !endDate) {
+                alert('Selecione um período válido.');
+                return;
+            }
+            
+            if (!confirm(`Tem certeza que deseja limpar todos os dados entre ${formatDate(startDate)} e ${formatDate(endDate)}?`)) {
+                return;
+            }
+            
+            if (!confirm('Esta ação não pode ser desfeita. Deseja continuar?')) {
+                return;
+            }
+            
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            
+            // Remover transações no período
+            financeData.transactions = financeData.transactions.filter(t => {
+                const transactionDate = new Date(t.date);
+                return transactionDate < start || transactionDate > end;
+            });
+            
+            // Remover faturas no período
+            financeData.invoices = financeData.invoices.filter(i => {
+                const invoiceDate = new Date(i.closingDate);
+                return invoiceDate < start || invoiceDate > end;
+            });
+            
+            // Recalcular totais das faturas restantes
+            recalculateInvoiceTotals();
+            
+            saveFinanceData();
+            renderAllData();
+            
+            // Limpar campos
+            document.getElementById('cleanStartDate').value = '';
+            document.getElementById('cleanEndDate').value = '';
+            
+            alert('Período limpo com sucesso!');
+        }
+        
+        // Resetar sistema
+        function resetSystem() {
+            if (!confirm('Tem certeza que deseja resetar todo o sistema?')) {
+                return;
+            }
+            
+            if (!confirm('Todos os dados serão perdidos. Esta ação não pode ser desfeita. Deseja continuar?')) {
+                return;
+            }
+            
+            // Manter apenas categorias padrão
+            financeData = {
+                cards: [],
+                invoices: [],
+                transactions: [],
+                categories: JSON.parse(JSON.stringify(defaultCategories)),
+                subcategories: JSON.parse(JSON.stringify(defaultSubcategories))
+            };
+            
+            saveFinanceData();
+            renderAllData();
+            
+            alert('Sistema resetado com sucesso!');
+        }
+        
+        // Calcular total gasto no cartão
+        function calculateCardTotalSpent(cardId) {
+            const cardTransactions = financeData.transactions.filter(t => t.cardId === cardId);
+            
+            // Considerar apenas transações de faturas não pagas
+            let total = 0;
+            cardTransactions.forEach(t => {
+                const invoice = financeData.invoices.find(i => i.id === t.invoiceId);
+                if (invoice && invoice.status !== 'paid') {
+                    total += t.value;
+                }
+            });
+            
+            return total;
+        }
+        
+        // Calcular total gasto na categoria
+        function calculateCategoryTotalSpent(categoryId) {
+            const categoryTransactions = financeData.transactions.filter(t => t.categoryId === categoryId);
+            return categoryTransactions.reduce((sum, t) => sum + t.value, 0);
+        }
+        
+        // Recalcular totais das faturas
+        function recalculateInvoiceTotals() {
+            financeData.invoices.forEach(invoice => {
+                invoice.total = 0;
+                invoice.transactions = [];
+                
+                financeData.transactions.forEach(t => {
+                    if (t.invoiceId === invoice.id) {
+                        invoice.transactions.push(t.id);
+                        invoice.total += t.value;
+                    }
+                });
+            });
+        }
+        
+        // Atualizar opções de fatura baseado no cartão selecionado
+        function updateInvoiceOptions(cardId) {
+            const invoiceSelect = document.getElementById('transactionInvoice');
+            invoiceSelect.innerHTML = '<option value="">Selecione uma fatura</option>';
+            
+            const openInvoices = financeData.invoices.filter(i => i.cardId === cardId && i.status === 'open');
+            
+            openInvoices.forEach(invoice => {
+                invoiceSelect.innerHTML += `<option value="${invoice.id}">${invoice.month}/${invoice.year}</option>`;
+            });
+        }
+        
+        // Atualizar opções de subcategoria baseado na categoria selecionada
+        function updateSubcategoryOptions(selectedCategoryId = null) {
+            const categoryId = selectedCategoryId || parseInt(document.getElementById('transactionCategory').value);
+            const subcategorySelect = document.getElementById('transactionSubcategory');
+            
+            subcategorySelect.innerHTML = '<option value="">Selecione uma subcategoria</option>';
+            
+            const subcategories = financeData.subcategories.filter(s => s.categoryId === categoryId);
+            
+            subcategories.forEach(subcategory => {
+                subcategorySelect.innerHTML += `<option value="${subcategory.id}">${subcategory.name}</option>`;
+            });
+        }
+        
+        // Formatar valor monetário
+        function formatCurrency(value) {
+            const symbol = currencySymbols[currentCurrency];
+            return `${symbol} ${value.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+        }
+        
+        // Formatar data
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR');
+        }
+        
+        // Gerenciamento de Usuários (Apenas para o proprietário)
+        
+        // Carregar usuários
+        function loadUsers() {
+            if (!isOwner) return;
+            
+            const usersList = document.getElementById('usersList');
+            usersList.innerHTML = '';
+            
+            db.collection('users').get().then(querySnapshot => {
+                querySnapshot.forEach(doc => {
+                    const user = doc.data();
+                    
+                    const userHtml = `
+                        <div class="user-item">
+                            <img src="${user.photoURL || 'https://picsum.photos/seed/user/50/50.jpg'}" alt="Avatar" class="user-avatar">
+                            <div class="user-info">
+                                <div class="user-name">${user.displayName || user.email}</div>
+                                <div class="user-email">${user.email}</div>
+                            </div>
+                            <div class="user-actions">
+                                <span class="status-badge ${user.status === 'active' ? 'status-active' : 'status-blocked'}">
+                                    ${user.status === 'active' ? 'Ativo' : 'Bloqueado'}
+                                </span>
+                                ${user.email === ownerEmail ? '<span class="owner-badge">PROPRIETÁRIO</span>' : ''}
+                                <div class="btn-group" role="group">
+                                    ${user.status === 'active' ? 
+                                        `<button class="btn btn-sm btn-outline-danger" onclick="blockUser('${user.uid}')">
+                                            <i class="fas fa-ban"></i>
+                                        </button>` :
+                                        `<button class="btn btn-sm btn-outline-success" onclick="unblockUser('${user.uid}')">
+                                            <i class="fas fa-check"></i>
+                                        </button>`
+                                    }
+                                    ${user.email !== ownerEmail ? 
+                                        `<button class="btn btn-sm btn-outline-danger" onclick="deleteUserData('${user.uid}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>` : ''
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    usersList.innerHTML += userHtml;
+                });
+            }).catch(error => {
+                console.error('Erro ao carregar usuários:', error);
+            });
+        }
+        
+        // Bloquear usuário
+        function blockUser(userId) {
+            if (!confirm('Tem certeza que deseja bloquear este usuário? Ele não poderá mais acessar o sistema.')) {
+                return;
+            }
+            
+            db.collection('users').doc(userId).update({
+                status: 'blocked'
+            }).then(() => {
+                alert('Usuário bloqueado com sucesso!');
+                loadUsers();
+            }).catch(error => {
+                console.error('Erro ao bloquear usuário:', error);
+                alert('Erro ao bloquear usuário.');
+            });
+        }
+        
+        // Desbloquear usuário
+        function unblockUser(userId) {
+            if (!confirm('Tem certeza que deseja desbloquear este usuário? Ele poderá acessar o sistema novamente.')) {
+                return;
+            }
+            
+            db.collection('users').doc(userId).update({
+                status: 'active'
+            }).then(() => {
+                alert('Usuário desbloqueado com sucesso!');
+                loadUsers();
+            }).catch(error => {
+                console.error('Erro ao desbloquear usuário:', error);
+                alert('Erro ao desbloquear usuário.');
+            });
+        }
+        
+        // Excluir dados do usuário
+        function deleteUserData(userId) {
+            if (!confirm('Tem certeza que deseja excluir todos os dados deste usuário? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            if (!confirm('Todos os dados financeiros do usuário serão permanentemente excluídos. Deseja continuar?')) {
+                return;
+            }
+            
+            // Excluir todos os dados financeiros do usuário
+            db.collection('userFinance').doc(userId).delete().then(() => {
+                alert('Dados do usuário excluídos com sucesso!');
+            }).catch(error => {
+                console.error('Erro ao excluir dados do usuário:', error);
+                alert('Erro ao excluir dados do usuário.');
+            });
+        }
+    </script>
+</body>
+</html>
